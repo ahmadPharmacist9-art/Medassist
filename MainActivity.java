@@ -3,6 +3,8 @@ package com.medremind.pk;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
+import android.app.AlarmManager;
+import android.app.AlarmManager.AlarmClockInfo;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Build;
@@ -127,15 +129,10 @@ public class MainActivity extends BridgeActivity {
                     PendingIntent pi = PendingIntent.getBroadcast(
                         this, alarmId, alarmIntent, piFlags);
 
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                        am.setExactAndAllowWhileIdle(
-                            android.app.AlarmManager.RTC_WAKEUP, 
-                            cal.getTimeInMillis(), pi);
-                    } else {
-                        am.setExact(
-                            android.app.AlarmManager.RTC_WAKEUP, 
-                            cal.getTimeInMillis(), pi);
-                    }
+                    // Use setAlarmClock for Android 14+
+                    AlarmManager.AlarmClockInfo clockInfo = new AlarmManager.AlarmClockInfo(
+                        cal.getTimeInMillis(), pi);
+                    am.setAlarmClock(clockInfo, pi);
                 } catch (Exception ignored) {}
             }
         } catch (Exception ignored) {}

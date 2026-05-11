@@ -146,14 +146,11 @@ public class MedRemindPlugin extends Plugin {
                     PendingIntent pi = PendingIntent.getBroadcast(
                         ctx, alarmId, intent, piFlags);
 
-                    // setExactAndAllowWhileIdle fires even in Doze mode
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                        am.setExactAndAllowWhileIdle(
-                            AlarmManager.RTC_WAKEUP, cal.getTimeInMillis(), pi);
-                    } else {
-                        am.setExact(
-                            AlarmManager.RTC_WAKEUP, cal.getTimeInMillis(), pi);
-                    }
+                    // setAlarmClock — the ONLY reliable method on Android 14+
+                    // This shows a clock icon and works even in Doze mode
+                    AlarmManager.AlarmClockInfo clockInfo = new AlarmManager.AlarmClockInfo(
+                        cal.getTimeInMillis(), pi);
+                    am.setAlarmClock(clockInfo, pi);
                     scheduled++;
 
                 } catch (Exception ex) { /* skip bad entry */ }
@@ -304,11 +301,10 @@ public class MedRemindPlugin extends Plugin {
 
                     PendingIntent pi = PendingIntent.getBroadcast(ctx, alarmId, intent, piFlags);
 
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                        am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, cal.getTimeInMillis(), pi);
-                    } else {
-                        am.setExact(AlarmManager.RTC_WAKEUP, cal.getTimeInMillis(), pi);
-                    }
+                    // Use setAlarmClock for rescheduling too (Android 14+)
+                    AlarmManager.AlarmClockInfo clockInfo = new AlarmManager.AlarmClockInfo(
+                        cal.getTimeInMillis(), pi);
+                    am.setAlarmClock(clockInfo, pi);
                     scheduled++;
                 } catch (Exception ignored) {}
             }
