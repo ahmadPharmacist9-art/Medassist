@@ -62,11 +62,7 @@ public class AlarmService extends Service {
 
         // ── Build AlarmActivity intent ────────────────────────────────────────
         Intent alarmIntent = new Intent(this, AlarmActivity.class);
-        alarmIntent.addFlags(
-            Intent.FLAG_ACTIVITY_NEW_TASK          |
-            Intent.FLAG_ACTIVITY_CLEAR_TOP         |
-            Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS
-        );
+        alarmIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS);
         alarmIntent.putExtra("medName",      medName);
         alarmIntent.putExtra("medStrength",  strength);
         alarmIntent.putExtra("schedTime",    schedTime);
@@ -80,6 +76,14 @@ public class AlarmService extends Service {
         // fullScreenIntent — the ONLY reliable way to show activity on lock screen
         PendingIntent fullScreenPI = PendingIntent.getActivity(
             this, notifId, alarmIntent, piFlags);
+        // ── Start AlarmActivity directly (backup for fullScreenIntent) ─────────────
+        try {
+            startActivity(alarmIntent);
+            Log.d(TAG, "AlarmActivity started directly");
+        } catch (Exception e) {
+            Log.e(TAG, "startActivity error: " + e.getMessage());
+        }
+
         Log.d(TAG, "fullScreenIntent created for notifId: " + notifId);
 
         // contentIntent — opens AlarmActivity when user taps notification
