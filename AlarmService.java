@@ -74,9 +74,11 @@ public class AlarmService extends Service {
         alarmIntent.putExtra("patientName",  patient);
 
         int piFlags = PendingIntent.FLAG_UPDATE_CURRENT |
-            PendingIntent.FLAG_SHOW_WHEN_LOCKED |  // CRITICAL: Show on lock screen
             (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
                 ? PendingIntent.FLAG_IMMUTABLE : 0);
+
+        // Use Intent flag for showing on lock screen (not PendingIntent flag)
+        alarmIntent.addFlags(Intent.FLAG_SHOW_WHEN_LOCKED);
 
         // fullScreenIntent — the ONLY reliable way to show activity on lock screen
         PendingIntent fullScreenPI = PendingIntent.getActivity(

@@ -17,6 +17,7 @@ import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
+import org.json.JSONArray;
 import org.json.JSONObject;
 import java.util.Calendar;
 
@@ -99,8 +100,9 @@ public class MedRemindPlugin extends Plugin {
             }
 
             // Save alarms to persistent storage FIRST (before scheduling)
-            // This ensures alarms survive reboot/force-stop
-            AlarmStorage.saveAlarms(ctx, alarms.toList());
+            // Convert JSArray to JSONArray for storage
+            JSONArray alarmsArray = new JSONArray(alarms.toString());
+            AlarmStorage.saveAlarms(ctx, alarmsArray);
 
             int scheduled = 0;
             for (int i = 0; i < alarms.length(); i++) {
