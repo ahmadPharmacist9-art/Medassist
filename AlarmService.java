@@ -80,6 +80,7 @@ public class AlarmService extends Service {
         // fullScreenIntent — the ONLY reliable way to show activity on lock screen
         PendingIntent fullScreenPI = PendingIntent.getActivity(
             this, notifId, alarmIntent, piFlags);
+        Log.d(TAG, "fullScreenIntent created for notifId: " + notifId);
 
         // contentIntent — opens AlarmActivity when user taps notification
         PendingIntent contentPI = PendingIntent.getActivity(
@@ -138,7 +139,7 @@ public class AlarmService extends Service {
             } catch (Exception e) {
                 Log.e(TAG, "stopSelf error: " + e.getMessage());
             }
-        }, 3000); // 3 second delay
+        }, 10000); // 10 second delay - gives time for full screen
 
         return START_NOT_STICKY;
     }
