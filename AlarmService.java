@@ -74,6 +74,7 @@ public class AlarmService extends Service {
         alarmIntent.putExtra("patientName",  patient);
 
         int piFlags = PendingIntent.FLAG_UPDATE_CURRENT |
+            PendingIntent.FLAG_SHOW_WHEN_LOCKED |  // CRITICAL: Show on lock screen
             (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
                 ? PendingIntent.FLAG_IMMUTABLE : 0);
 
@@ -90,6 +91,11 @@ public class AlarmService extends Service {
         String body  = patient + " — ⏰ " + schedTime +
                        (instruct.isEmpty() ? "" : "\n⚠️ " + instruct);
 
+// Get alarm sound for notification builder (for all Android versions)
+        Uri alarmSoundBuilder = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM);
+        if (alarmSoundBuilder == null) {
+            alarmSoundBuilder = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
+        }
         NotificationCompat.Builder builder = new NotificationCompat.Builder(
                 this, ALARM_CHANNEL)           // own dedicated channel
             .setSmallIcon(android.R.drawable.ic_dialog_alert)
@@ -103,8 +109,10 @@ public class AlarmService extends Service {
             .setContentIntent(contentPI)
             .setOngoing(true)
             .setAutoCancel(false);
-            // NOTE: Sound is set on the CHANNEL not the builder (Android 8+)
-            // Do NOT add .setSound() here — channel controls audio
+            // FIX: Set sound on builder too (works on all Android versions)
+            if (alarmSoundBuilder != null) {
+                builder.setSound(alarmSoundBuilder);
+            }
 
         Notification notification = builder.build();
 

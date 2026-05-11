@@ -98,6 +98,10 @@ public class MedRemindPlugin extends Plugin {
                 return;
             }
 
+            // Save alarms to persistent storage FIRST (before scheduling)
+            // This ensures alarms survive reboot/force-stop
+            AlarmStorage.saveAlarms(ctx, alarms.toList());
+
             int scheduled = 0;
             for (int i = 0; i < alarms.length(); i++) {
                 try {
@@ -241,6 +245,75 @@ public class MedRemindPlugin extends Plugin {
                 getContext().getSystemService(Context.NOTIFICATION_SERVICE);
             if (nm != null) nm.cancel(EMERGENCY_NOTIF_ID);
             call.resolve();
+        } catch (Exception e) { call.reject(e.getMessage()); }
+    }
+
+    // ── Reschedule alarms from storage (called after boot) ─────────────────────
+    @PluginMethod
+    public void rescheduleAlarms(PluginCall call) {
+        try {
+            Context ctx = getContext();
+            JSONArray alarms = AlarmStorage.loadAlarms(ctx);
+            if (alarms.length() == 0) {
+                call.resolve(new JSObject().put("scheduled", 0));
+                return;
+            }
+
+            AlarmManager am = (AlarmManager) ctx.getSystemService(Context.ALARM_SERVICE);
+            if (am == null) { call.reject("No AlarmManager"); return; }
+
+            int scheduled = 0;
+            for (int i = 0; i < alarms.length(); i++) {
+                try {
+                    JSONObject a = alarms.getJSONObject(i);
+                    int alarmId = a.getInt("alarmId");
+                    String medName = a.optString("medName", "Medicine");
+                    String strength = a.optString("medStrength", "");
+                    String schedTime = a.optString("schedTime", "");
+                    String instruct = a.optString("instructions", "");
+                    String patient = a.optString("patientName", "Patient");
+                    int hour = a.optInt("hour", 0);
+                    int minute = a.optInt("minute", 0);
+                    int dayOff = a.optInt("dayOffset", 0);
+
+                    Calendar cal = Calendar.getInstance();
+                    cal.add(Calendar.DAY_OF_YEAR, dayOff);
+                    cal.set(Calendar.HOUR_OF_DAY, hour);
+                    cal.set(Calendar.MINUTE, minute);
+                    cal.set(Calendar.SECOND, 0);
+                    cal.set(Calendar.MILLISECOND, 0);
+
+                    // Skip past times (with 60s buffer)
+                    if (cal.getTimeInMillis() < System.currentTimeMillis() - 60_000L)
+                        continue;
+
+                    Intent intent = new Intent(ctx, AlarmReceiver.class);
+                    intent.setAction("MEDICINE_ALARM_" + alarmId);
+                    intent.putExtra("medName", medName);
+                    intent.putExtra("medStrength", strength);
+                    intent.putExtra("schedTime", schedTime);
+                    intent.putExtra("instructions", instruct);
+                    intent.putExtra("patientName", patient);
+                    intent.putExtra("notifId", alarmId);
+
+                    int piFlags = PendingIntent.FLAG_UPDATE_CURRENT |
+                        (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
+                            ? PendingIntent.FLAG_IMMUTABLE : 0);
+
+                    PendingIntent pi = PendingIntent.getBroadcast(ctx, alarmId, intent, piFlags);
+
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                        am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, cal.getTimeInMillis(), pi);
+                    } else {
+                        am.setExact(AlarmManager.RTC_WAKEUP, cal.getTimeInMillis(), pi);
+                    }
+                    scheduled++;
+                } catch (Exception ignored) {}
+            }
+
+            JSObject result = new JSObject();
+            result.put("scheduled", scheduled);
+            call.resolve(result);
         } catch (Exception e) { call.reject(e.getMessage()); }
     }
 

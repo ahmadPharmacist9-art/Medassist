@@ -55,6 +55,14 @@ public class MainActivity extends BridgeActivity {
             }
         }
 
+        // Handle boot reschedule intent (from BootReceiver)
+        Intent intent = getIntent();
+        boolean shouldReschedule = intent != null && 
+            intent.getBooleanExtra("reschedule_alarms", false);
+        if (shouldReschedule) {
+            rescheduleStoredAlarms();
+        }
+
         // Start background monitoring service
         try {
             Intent svc = new Intent(this, MedReminderService.class);
@@ -63,6 +71,71 @@ public class MainActivity extends BridgeActivity {
                 startForegroundService(svc);
             else
                 startService(svc);
+        } catch (Exception ignored) {}
+    }
+
+    // Reschedule alarms from persistent storage after boot
+    private void rescheduleStoredAlarms() {
+        try {
+            // Load and reschedule saved alarms
+            org.json.JSONArray alarms = AlarmStorage.loadAlarms(this);
+            if (alarms.length() == 0) return;
+            
+            android.app.AlarmManager am = (android.app.AlarmManager) 
+                getSystemService(ALARM_SERVICE);
+            if (am == null) return;
+
+            for (int i = 0; i < alarms.length(); i++) {
+                try {
+                    org.json.JSONObject a = alarms.getJSONObject(i);
+                    int alarmId = a.getInt("alarmId");
+                    String medName = a.optString("medName", "Medicine");
+                    String strength = a.optString("medStrength", "");
+                    String schedTime = a.optString("schedTime", "");
+                    String instruct = a.optString("instructions", "");
+                    String patient = a.optString("patientName", "Patient");
+                    int hour = a.optInt("hour", 0);
+                    int minute = a.optInt("minute", 0);
+                    int dayOff = a.optInt("dayOffset", 0);
+
+                    java.util.Calendar cal = java.util.Calendar.getInstance();
+                    cal.add(java.util.Calendar.DAY_OF_YEAR, dayOff);
+                    cal.set(java.util.Calendar.HOUR_OF_DAY, hour);
+                    cal.set(java.util.Calendar.MINUTE, minute);
+                    cal.set(java.util.Calendar.SECOND, 0);
+                    cal.set(java.util.Calendar.MILLISECOND, 0);
+
+                    // Skip past times
+                    if (cal.getTimeInMillis() < System.currentTimeMillis() - 60_000L)
+                        continue;
+
+                    Intent alarmIntent = new Intent(this, AlarmReceiver.class);
+                    alarmIntent.setAction("MEDICINE_ALARM_" + alarmId);
+                    alarmIntent.putExtra("medName", medName);
+                    alarmIntent.putExtra("medStrength", strength);
+                    alarmIntent.putExtra("schedTime", schedTime);
+                    alarmIntent.putExtra("instructions", instruct);
+                    alarmIntent.putExtra("patientName", patient);
+                    alarmIntent.putExtra("notifId", alarmId);
+
+                    int piFlags = PendingIntent.FLAG_UPDATE_CURRENT |
+                        (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
+                            ? PendingIntent.FLAG_IMMUTABLE : 0);
+
+                    PendingIntent pi = PendingIntent.getBroadcast(
+                        this, alarmId, alarmIntent, piFlags);
+
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                        am.setExactAndAllowWhileIdle(
+                            android.app.AlarmManager.RTC_WAKEUP, 
+                            cal.getTimeInMillis(), pi);
+                    } else {
+                        am.setExact(
+                            android.app.AlarmManager.RTC_WAKEUP, 
+                            cal.getTimeInMillis(), pi);
+                    }
+                } catch (Exception ignored) {}
+            }
         } catch (Exception ignored) {}
     }
 

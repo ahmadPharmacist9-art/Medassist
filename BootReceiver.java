@@ -7,7 +7,10 @@ import android.os.Build;
 
 /**
  * BootReceiver — restarts background service after phone reboot
- *
+ * 
+ * CRITICAL: Also reschedules all saved alarms from persistent storage.
+ * AlarmManager alarms are cleared on reboot, so we must reload them.
+ * 
  * Place at:
  * C:\medremind-pk.html\android\app\src\main\java\com\medremind\pk\BootReceiver.java
  */
@@ -20,7 +23,7 @@ public class BootReceiver extends BroadcastReceiver {
             !"android.intent.action.QUICKBOOT_POWERON".equals(action) &&
             !"com.htc.intent.action.QUICKBOOT_POWERON".equals(action)) return;
 
-        // Restart background service
+        // Step 1: Restart background service
         try {
             Intent svc = new Intent(context, MedReminderService.class);
             svc.setAction(MedReminderService.ACTION_START);
@@ -30,13 +33,15 @@ public class BootReceiver extends BroadcastReceiver {
                 context.startService(svc);
         } catch (Exception ignored) {}
 
-        // Launch app to reschedule AlarmManager alarms
+        // Step 2: Launch app to reschedule alarms via MainActivity
+        // MainActivity.rescheduleStoredAlarms() will restore saved alarms
         try {
             Intent launch = context.getPackageManager()
                 .getLaunchIntentForPackage(context.getPackageName());
             if (launch != null) {
                 launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK |
                                 Intent.FLAG_ACTIVITY_SINGLE_TOP);
+                launch.putExtra("reschedule_alarms", true); // Signal to reschedule
                 context.startActivity(launch);
             }
         } catch (Exception ignored) {}
