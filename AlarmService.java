@@ -77,9 +77,6 @@ public class AlarmService extends Service {
             (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
                 ? PendingIntent.FLAG_IMMUTABLE : 0);
 
-        // Use Intent flag for showing on lock screen (not PendingIntent flag)
-        alarmIntent.addFlags(Intent.FLAG_SHOW_WHEN_LOCKED);
-
         // fullScreenIntent — the ONLY reliable way to show activity on lock screen
         PendingIntent fullScreenPI = PendingIntent.getActivity(
             this, notifId, alarmIntent, piFlags);
