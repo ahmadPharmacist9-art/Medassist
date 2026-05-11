@@ -70,21 +70,11 @@ public class AlarmService extends Service {
         alarmIntent.putExtra("patientName",  patient);
 
         int piFlags = PendingIntent.FLAG_UPDATE_CURRENT |
-            (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
-                ? PendingIntent.FLAG_IMMUTABLE : 0);
+            PendingIntent.FLAG_IMMUTABLE;
 
         // fullScreenIntent — the ONLY reliable way to show activity on lock screen
         PendingIntent fullScreenPI = PendingIntent.getActivity(
             this, notifId, alarmIntent, piFlags);
-        // ── Start AlarmActivity directly (backup for fullScreenIntent) ─────────────
-        try {
-            startActivity(alarmIntent);
-            Log.d(TAG, "AlarmActivity started directly");
-        } catch (Exception e) {
-            Log.e(TAG, "startActivity error: " + e.getMessage());
-        }
-
-        Log.d(TAG, "fullScreenIntent created for notifId: " + notifId);
 
         // contentIntent — opens AlarmActivity when user taps notification
         PendingIntent contentPI = PendingIntent.getActivity(
