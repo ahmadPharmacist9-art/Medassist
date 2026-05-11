@@ -23,7 +23,7 @@
     <!-- Full-screen alarm on lock screen -->
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
 
-    <!-- Foreground services -->
+    <!-- Foreground services with specialUse for alarms -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
 
@@ -68,13 +68,17 @@
         <!--
             AlarmService — fired by AlarmReceiver
             Uses WakeLock + foreground to guarantee alarm sound and UI display
-            foregroundServiceType="shortService" for Android 14+
+            foregroundServiceType="specialUse" for alarms with Android 14+
         -->
         <service
             android:name=".AlarmService"
             android:exported="false"
             android:enabled="true"
-            android:foregroundServiceType="shortService" />
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android:requiredForegroundServiceType"
+                android:value="alarm" />
+        </service>
 
         <!--
             MedReminderService — persistent background service
