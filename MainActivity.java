@@ -9,6 +9,7 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
+import com.medremind.pk.MedReminderService;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import com.getcapacitor.BridgeActivity;
@@ -34,6 +35,17 @@ public class MainActivity extends BridgeActivity {
         super.onCreate(savedInstanceState);
 
         createChannels();
+
+        // Start persistent service to keep app alive for alarms
+        try {
+            Intent svc = new Intent(this, MedReminderService.class);
+            svc.setAction(MedReminderService.ACTION_START);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                startForegroundService(svc);
+            } else {
+                startService(svc);
+            }
+        } catch (Exception ignored) {}
 
         // Request notification permission (Android 13+)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
