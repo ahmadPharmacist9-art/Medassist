@@ -1,14 +1,23 @@
 package com.medremind.pk;
 
 import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
 import android.app.PendingIntent;
+import android.app.AlarmManager;
+import android.app.AlarmManager.AlarmClockInfo;
 import android.app.Service;
 import android.content.Intent;
+import android.content.Context;
 import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
+import android.os.PowerManager;
 import androidx.core.app.NotificationCompat;
+import org.json.JSONArray;
+import org.json.JSONObject;
+import java.util.Calendar;
 
 /**
  * MedReminderService — Persistent background service
@@ -47,7 +56,66 @@ public class MedReminderService extends Service {
 
         startForeground(NOTIF_ID, buildNotification());
         startKeepAlive();
+        
+        // Reschedule stored alarms in case service was killed and restarted
+        rescheduleAlarms();
+        
         return START_STICKY; // Android restarts if killed
+    }
+    
+    // Reschedule all saved alarms (called on service start/restart)
+    private void rescheduleAlarms() {
+        try {
+            JSONArray alarms = AlarmStorage.loadAlarms(this);
+            if (alarms.length() == 0) return;
+            
+            AlarmManager am = (AlarmManager) getSystemService(ALARM_SERVICE);
+            if (am == null) return;
+            
+            for (int i = 0; i < alarms.length(); i++) {
+                try {
+                    JSONObject a = alarms.getJSONObject(i);
+                    int alarmId = a.getInt("alarmId");
+                    String medName = a.optString("medName", "Medicine");
+                    String strength = a.optString("medStrength", "");
+                    String schedTime = a.optString("schedTime", "");
+                    String instruct = a.optString("instructions", "");
+                    String patient = a.optString("medPatient", "Patient");
+                    int hour = a.optInt("hour", 8);
+                    int minute = a.optInt("minute", 0);
+                    
+                    // Calculate next alarm time
+                    Calendar cal = Calendar.getInstance();
+                    cal.set(Calendar.HOUR_OF_DAY, hour);
+                    cal.set(Calendar.MINUTE, minute);
+                    cal.set(Calendar.SECOND, 0);
+                    
+                    // If time has passed today, schedule for tomorrow
+                    if (cal.getTimeInMillis() <= System.currentTimeMillis()) {
+                        cal.add(Calendar.DAY_OF_MONTH, 1);
+                    }
+                    
+                    Intent intent = new Intent(this, AlarmReceiver.class);
+                    intent.putExtra("medName", medName);
+                    intent.putExtra("medStrength", strength);
+                    intent.putExtra("schedTime", schedTime);
+                    intent.putExtra("instructions", instruct);
+                    intent.putExtra("patientName", patient);
+                    intent.putExtra("alarmId", alarmId);
+                    
+                    int piFlags = PendingIntent.FLAG_UPDATE_CURRENT |
+                        PendingIntent.FLAG_IMMUTABLE;
+                    
+                    PendingIntent pi = PendingIntent.getBroadcast(
+                        this, alarmId, intent, piFlags);
+                    
+                    AlarmManager.AlarmClockInfo clockInfo = new AlarmManager.AlarmClockInfo(
+                        cal.getTimeInMillis(), pi);
+                    am.setAlarmClock(clockInfo, pi);
+                    
+                } catch (Exception ignored) {}
+            }
+        } catch (Exception ignored) {}
     }
 
     private Notification buildNotification() {
