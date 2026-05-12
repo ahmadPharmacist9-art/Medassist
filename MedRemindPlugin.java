@@ -125,9 +125,10 @@ public class MedRemindPlugin extends Plugin {
                     cal.set(Calendar.SECOND,      0);
                     cal.set(Calendar.MILLISECOND, 0);
 
-                    // Skip past times (with 60s buffer)
-                    if (cal.getTimeInMillis() < System.currentTimeMillis() - 60_000L)
-                        continue;
+                    // If time has passed today, schedule for tomorrow instead
+                    if (cal.getTimeInMillis() <= System.currentTimeMillis()) {
+                        cal.add(Calendar.DAY_OF_MONTH, 1);
+                    }
 
                     // Build broadcast intent → AlarmReceiver → AlarmService → AlarmActivity
                     Intent intent = new Intent(ctx, AlarmReceiver.class);
